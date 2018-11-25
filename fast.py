@@ -125,6 +125,8 @@ class Node:
 
                         output = switch_model.predict(np.array([data]))
                         Thread(target=self.send, args=(output, id, '192.168.1.16')).start()
+
+                        id, data = self.queue.get()
                     self.switch()
                 else:
                     output = self.model.predict(np.array([data]))
