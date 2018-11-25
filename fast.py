@@ -1,7 +1,7 @@
 import os
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from SocketServer import ThreadingMixIn
-from multiprocessing import Queue
+from multiprocessing import Queue, Lock
 from threading import Thread
 import tensorflow as tf
 from keras.layers import Dense, Input
@@ -106,6 +106,7 @@ class Node:
         self.model = None
         self.queue = Queue(SIZE)
         self.mode = 0
+        self.lock = Lock()
 
     def inference(self):
         while True:
@@ -113,15 +114,19 @@ class Node:
                 time.sleep(0.001)
 
             id, data = self.queue.get()
+
+            self.lock.acquire()
             with self.graph.as_default():
                 output = self.model.predict(np.array([data]))
-                
+            self.lock.release()
+
             if self.mode:
                 Thread(target=self.send, args=(output, id, '192.168.1.16')).start()
             else:
                 Thread(target=self.send, args=(output, id, '192.168.1.15')).start()
 
     def switch(self):
+        self.lock.acquire()
         img_input = Input([100])
         fast = Dense(2000)(img_input)
 
@@ -130,6 +135,7 @@ class Node:
 
         self.model = Model(img_input, fast)
         self.mode = 1 - self.mode
+        self.lock.acquire()
 
     def send(self, output, id, ip):
         client = ipc.HTTPTransceiver(ip, 12345)
@@ -140,7 +146,9 @@ class Node:
         data['identifier'] = id
 
         result = requestor.request('forward', data)
-        if result:
+        if result and not self.mode:
+            self.switch()
+        elif not result and self.mode:
             self.switch()
 
 
