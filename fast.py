@@ -17,7 +17,7 @@ DIR_PATH = os.path.dirname(PATH)
 
 # read data packet format.
 PROTOCOL = protocol.parse(open(DIR_PATH + '/resource/message/message.avpr').read())
-SIZE = 10
+SIZE = 100
 
 
 class Responder(ipc.Responder):
@@ -51,7 +51,6 @@ class Responder(ipc.Responder):
         node = Node.create()
         try:
             id, bytestr = int(req['identifier']), req['input']
-            print 'processing ... '
             if not node.queue.full():
                 data = np.fromstring(bytestr, np.float32).reshape([100])
                 node.queue.put((id, data))
