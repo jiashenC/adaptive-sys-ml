@@ -14,7 +14,7 @@ PROTOCOL = protocol.parse(open(DIR_PATH + '/resource/message/message.avpr').read
 
 
 def send_request(frame, id):
-    client = ipc.HTTPTransceiver('192.168.1.13', 12345)
+    client = ipc.HTTPTransceiver('192.168.1.14', 12345)
     requestor = ipc.Requestor(PROTOCOL, client)
 
     data = dict()
