@@ -50,9 +50,10 @@ class Responder(ipc.Responder):
         """
         node = Node.create()
         try:
-            id, data = int(req['id']), req['data']
+            id, bytestr = int(req['identifier']), req['input']
+            print 'processing ... '
             if not node.queue.full():
-                data = np.fromstring(data, np.float32).reshape([100])
+                data = np.fromstring(bytestr, np.float32).reshape([100])
                 node.queue.put((id, data))
             return False
         except Exception, e:

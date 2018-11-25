@@ -14,7 +14,7 @@ PROTOCOL = protocol.parse(open(DIR_PATH + '/resource/message/message.avpr').read
 
 
 def send_request(frame, id):
-    client = ipc.HTTPTransceiver('192.168.1.14', 12345)
+    client = ipc.HTTPTransceiver('192.168.1.13', 12345)
     requestor = ipc.Requestor(PROTOCOL, client)
 
     data = dict()
@@ -22,13 +22,14 @@ def send_request(frame, id):
     data['identifier'] = id
 
     requestor.request('forward', data)
+    client.close()
 
 
 def master():
     data = np.random.random_sample([100])
     for i in range(100):
         Thread(target=send_request, args=(data, i,)).start()
-        time.sleep(0.01)
+        time.sleep(0.03)
 
 
 def main():

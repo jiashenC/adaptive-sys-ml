@@ -44,7 +44,7 @@ class Responder(ipc.Responder):
         """
         stats = Stats.create()
         try:
-            id = int(req['id'])
+            id = int(req['identifier'])
             stats.incoming_frame(id)
             return False
         except Exception, e:

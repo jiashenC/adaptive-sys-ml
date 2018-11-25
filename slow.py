@@ -51,7 +51,7 @@ class Responder(ipc.Responder):
         """
         node = Node.create()
         try:
-            id, data = int(req['id']), req['data']
+            id, data = int(req['identifier']), req['input']
             if not node.queue.full():
                 data = np.fromstring(data, np.float32).reshape([2000])
                 node.queue.put((id, data))
