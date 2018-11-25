@@ -95,7 +95,7 @@ class Stats:
         self.log()
 
     def log(self):
-        print 'coverage:{:.3f}%, frame rate:{:.3f}f/s'.format(sum(self.data_log.values()) * 1.0,
+        print 'coverage:{:.3f} %, frame rate:{:.3f} f/s'.format(sum(self.data_log.values()) * 1.0,
                                                               self.frame_count / (time.time() - self.start_time))
 
 

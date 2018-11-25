@@ -118,12 +118,12 @@ class Node:
             self.lock.acquire()
             with self.graph.as_default():
                 output = self.model.predict(np.array([data]))
-            self.lock.release()
 
             if self.mode:
                 Thread(target=self.send, args=(output, id, '192.168.1.16')).start()
             else:
                 Thread(target=self.send, args=(output, id, '192.168.1.15')).start()
+            self.lock.release()
 
     def switch(self):
         self.lock.acquire()
