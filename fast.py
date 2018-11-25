@@ -3,6 +3,7 @@ from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from SocketServer import ThreadingMixIn
 from multiprocessing import Queue
 from threading import Thread
+import tensorflow as tf
 from keras.layers import Dense, Input
 from keras.models import Model
 import avro.ipc as ipc
@@ -101,6 +102,7 @@ class Node:
         return cls.instance
 
     def __init__(self):
+        self.graph = tf.get_default_graph()
         self.model = None
         self.queue = Queue(SIZE)
         self.mode = 0
@@ -111,7 +113,9 @@ class Node:
                 time.sleep(0.001)
 
             id, data = self.queue.get()
-            output = self.model.predict(np.array([data]))
+            with self.graph.as_default():
+                output = self.model.predict(np.array([data]))
+                
             if self.mode:
                 Thread(target=self.send, args=(output, id, '192.168.1.16')).start()
             else:
