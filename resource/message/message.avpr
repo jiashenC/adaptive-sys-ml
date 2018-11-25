@@ -8,9 +8,6 @@
         "name" : "input",
         "type" : "bytes"
       }, {
-        "name" : "inference_time",
-        "type" : "float"
-      }, {
         "name" : "identifier",
         "type" : "int"
       } ],

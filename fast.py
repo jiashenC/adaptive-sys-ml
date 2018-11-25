@@ -50,7 +50,7 @@ class Responder(ipc.Responder):
         """
         node = Node.create()
         try:
-            data, id = req['id'], req['data']
+            id, data = int(req['id']), req['data']
             if not node.queue.full():
                 data = np.fromstring(data, np.float32).reshape([100])
                 node.queue.put((id, data))
@@ -133,7 +133,6 @@ class Node:
 
         data = dict()
         data['input'] = output.astype(np.float32).tobytes()
-        data['inference_time'] = 0.0
         data['identifier'] = id
 
         result = requestor.request('forward', data)
