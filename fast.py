@@ -115,27 +115,23 @@ class Node:
 
             id, data = self.queue.get()
 
-            self.lock.acquire()
             with self.graph.as_default():
-                output = self.model.predict(np.array([data]))
+                if self.mode:
+                    for _ in range(5):
+                        img_input = Input([100])
+                        fast = Dense(2000)(img_input)
+                        fast = Dense(2000)(fast)
+                        switch_model = Model(img_input, fast)
 
-            if self.mode:
-                Thread(target=self.send, args=(output, id, '192.168.1.16')).start()
-            else:
-                Thread(target=self.send, args=(output, id, '192.168.1.15')).start()
-            self.lock.release()
+                        output = switch_model.predict(np.array([data]))
+                        Thread(target=self.send, args=(output, id, '192.168.1.16')).start()
+                    self.switch()
+                else:
+                    output = self.model.predict(np.array([data]))
+                    Thread(target=self.send, args=(output, id, '192.168.1.15')).start()
 
     def switch(self):
-        self.lock.acquire()
-        img_input = Input([100])
-        fast = Dense(2000)(img_input)
-
-        if self.mode == 0:
-            fast = Dense(2000)(fast)
-
-        self.model = Model(img_input, fast)
-        self.mode = 1 - self.mode
-        self.lock.acquire()
+        self.mode = not self.mode
 
     def send(self, output, id, ip):
         client = ipc.HTTPTransceiver(ip, 12345)
@@ -146,9 +142,7 @@ class Node:
         data['identifier'] = id
 
         result = requestor.request('forward', data)
-        if result and not self.mode:
-            self.switch()
-        elif not result and self.mode:
+        if result:
             self.switch()
 
 
