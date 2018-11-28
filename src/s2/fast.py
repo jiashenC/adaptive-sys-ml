@@ -18,8 +18,8 @@ DIR_PATH = os.path.dirname(PATH)
 
 # read data packet format.
 PROTOCOL = protocol.parse(open(DIR_PATH + '/resource/message/message.avpr').read())
-SIZE = 100
-BUFFER = 5
+SIZE = 10
+BUFFER = 40
 
 
 class Responder(ipc.Responder):
