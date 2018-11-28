@@ -1,14 +1,8 @@
 import os
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from SocketServer import ThreadingMixIn
-from multiprocessing import Queue, Lock
-from threading import Thread
-import tensorflow as tf
-from keras.layers import Dense, Input
-from keras.models import Model
 import avro.ipc as ipc
 import avro.protocol as protocol
-import numpy as np
 import time
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -18,7 +12,6 @@ DIR_PATH = os.path.dirname(PATH)
 
 # read data packet format.
 PROTOCOL = protocol.parse(open(DIR_PATH + '/resource/message/message.avpr').read())
-SIZE = 100
 
 
 class Responder(ipc.Responder):
@@ -49,12 +42,10 @@ class Responder(ipc.Responder):
             Raises:
                 AvroException: if the data does not have correct syntac defined in Schema
         """
-        node = Node.create()
+        stats = Stats.create()
         try:
-            id, bytestr = int(req['identifier']), req['input']
-            if not node.queue.full():
-                data = np.fromstring(bytestr, np.float32).reshape([100])
-                node.queue.put((id, data))
+            id = int(req['identifier'])
+            stats.incoming_frame(id)
             return False
         except Exception, e:
             print 'Message exception'
@@ -82,75 +73,33 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """ Handle requests in separate thread. """
 
 
-class Node:
+class Stats:
     instance = None
 
     @classmethod
     def create(cls):
         if cls.instance is None:
             cls.instance = cls()
-
-            data = np.random.random_sample([100])
-            img_input = Input([100])
-            fast = Dense(2000)(img_input)
-            model = Model(img_input, fast)
-            model.predict(np.array([data]))
-
-            cls.instance.model = model
-            Thread(target=cls.instance.inference, args=()).start()
-
         return cls.instance
 
     def __init__(self):
-        self.graph = tf.get_default_graph()
-        self.model = None
-        self.queue = Queue(SIZE)
-        self.mode = 0
-        self.lock = Lock()
+        self.start_time = 0.0
+        self.data_log = {i: 0 for i in range(100)}
+        self.frame_count = 0
 
-    def inference(self):
-        while True:
-            while self.queue.empty():
-                time.sleep(0.001)
+    def incoming_frame(self, id):
+        if self.start_time == 0.0:
+            self.start_time = time.time()
+        self.data_log[id] += 1
+        self.frame_count += 1
+        self.log()
 
-            id, data = self.queue.get()
-
-            with self.graph.as_default():
-                if self.mode:
-                    for _ in range(5):
-                        img_input = Input([100])
-                        fast = Dense(2000)(img_input)
-                        fast = Dense(2000)(fast)
-                        switch_model = Model(img_input, fast)
-
-                        output = switch_model.predict(np.array([data]))
-                        Thread(target=self.send, args=(output, id, '192.168.1.16')).start()
-
-                        id, data = self.queue.get()
-                    self.switch()
-                else:
-                    output = self.model.predict(np.array([data]))
-                    Thread(target=self.send, args=(output, id, '192.168.1.15')).start()
-
-    def switch(self):
-        self.mode = not self.mode
-
-    def send(self, output, id, ip):
-        client = ipc.HTTPTransceiver(ip, 12345)
-        requestor = ipc.Requestor(PROTOCOL, client)
-
-        data = dict()
-        data['input'] = output.astype(np.float32).tobytes()
-        data['identifier'] = id
-
-        result = requestor.request('forward', data)
-        if result:
-            self.switch()
+    def log(self):
+        print 'coverage:{:.3f} %, frame rate:{:.3f} f/s'.format(sum(self.data_log.values()) * 1.0,
+                                                              self.frame_count / (time.time() - self.start_time))
 
 
 def main():
-    node = Node.create()
-
     server = ThreadedHTTPServer(('0.0.0.0', 12345), Handler)
     server.allow_reuse_address = True
     server.serve_forever()

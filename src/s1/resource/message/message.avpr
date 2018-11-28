@@ -1,0 +1,17 @@
+{
+  "protocol" : "message",
+  "namespace" : null,
+  "types" : [ ],
+  "messages" : {
+    "forward" : {
+      "request" : [ {
+        "name" : "input",
+        "type" : "bytes"
+      }, {
+        "name" : "identifier",
+        "type" : "int"
+      } ],
+      "response" : "boolean"
+    }
+  }
+}

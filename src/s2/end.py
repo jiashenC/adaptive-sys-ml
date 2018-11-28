@@ -1,15 +1,8 @@
 import os
-import argparse
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from SocketServer import ThreadingMixIn
-from multiprocessing import Queue
-from threading import Thread
-import tensorflow as tf
-from keras.layers import Dense, Input
-from keras.models import Model
 import avro.ipc as ipc
 import avro.protocol as protocol
-import numpy as np
 import time
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -19,7 +12,6 @@ DIR_PATH = os.path.dirname(PATH)
 
 # read data packet format.
 PROTOCOL = protocol.parse(open(DIR_PATH + '/resource/message/message.avpr').read())
-SIZE = 10
 
 
 class Responder(ipc.Responder):
@@ -50,15 +42,11 @@ class Responder(ipc.Responder):
             Raises:
                 AvroException: if the data does not have correct syntac defined in Schema
         """
-        node = Node.create()
+        stats = Stats.create()
         try:
-            id, data = int(req['identifier']), req['input']
-            if not node.queue.full():
-                data = np.fromstring(data, np.float32).reshape([2000])
-                node.queue.put((id, data))
-                return False
-            else:
-                return True and not node.baseline
+            id = int(req['identifier'])
+            stats.incoming_frame(id)
+            return False
         except Exception, e:
             print 'Message exception'
 
@@ -85,64 +73,37 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """ Handle requests in separate thread. """
 
 
-class Node:
+class Stats:
     instance = None
 
     @classmethod
     def create(cls):
         if cls.instance is None:
             cls.instance = cls()
-
-            data = np.random.random_sample([2000])
-            img_input = Input([2000])
-            slow = Dense(2000)(img_input)
-            model = Model(img_input, slow)
-            model.predict(np.array([data]))
-
-            cls.instance.model = model
-            Thread(target=cls.instance.inference, args=()).start()
-
         return cls.instance
 
     def __init__(self):
-        self.graph = tf.get_default_graph()
-        self.model = None
-        self.queue = Queue(maxsize=SIZE)
-        self.baseline = False
+        self.start_time = 0.0
+        self.data_log = {i: 0 for i in range(100)}
+        self.frame_count = 0
 
-    def inference(self):
-        while True:
-            while self.queue.empty():
-                time.sleep(0.001)
+    def incoming_frame(self, id):
+        if self.start_time == 0.0:
+            self.start_time = time.time()
+        self.data_log[id] += 1
+        self.frame_count += 1
+        self.log()
 
-            id, data = self.queue.get()
-            with self.graph.as_default():
-                output = self.model.predict(np.array([data]))
-            Thread(target=self.send, args=(output, id)).start()
-
-    def send(self, output, id):
-        client = ipc.HTTPTransceiver('192.168.1.16', 12345)
-        requestor = ipc.Requestor(PROTOCOL, client)
-
-        data = dict()
-        data['input'] = output.astype(np.float32).tobytes()
-        data['identifier'] = id
-
-        requestor.request('forward', data)
+    def log(self):
+        print 'coverage:{:.3f} %, frame rate:{:.3f} f/s'.format(sum(self.data_log.values()) * 1.0,
+                                                              self.frame_count / (time.time() - self.start_time))
 
 
-def main(cmd):
-    node = Node.create()
-    node.baseline = cmd.baseline
-
+def main():
     server = ThreadedHTTPServer(('0.0.0.0', 12345), Handler)
     server.allow_reuse_address = True
     server.serve_forever()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-b', '--baseline', action='store_true', default=False,
-                        help='set to baseline mode for testing')
-    cmd = parser.parse_args()
-    main(cmd)
+    main()
