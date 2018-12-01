@@ -6,7 +6,13 @@ to provide better data integrity with the similar performance.
 ## Code Structure
 ```text
 .
+├── Final\ Report.pdf
 ├── README.md
+├── presentation
+│   └── Final\ Presentation.pdf
+├── requirements.txt
+├── results
+│   └── Results.pdf
 └── src
     ├── baseline
     │   ├── client.py
